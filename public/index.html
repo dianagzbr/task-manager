@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Manager</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+  <div class="container mx-auto p-4">
+    <h1 class="text-2xl font-bold mb-4">Task Manager</h1>
+    
+    <!-- Add/Edit Task Form -->
+    <div class="mb-4">
+      <h2 class="text-xl font-semibold">Add/Edit Task</h2>
+      <div class="flex space-x-2">
+        <input id="title" type="text" class="border p-2 rounded flex-1" placeholder="Task title" required>
+        <input id="description" type="text" class="border p-2 rounded flex-1" placeholder="Description">
+        <button id="saveBtn" class="bg-blue-500 text-white p-2 rounded">Save</button>
+      </div>
+      <input type="hidden" id="taskId">
+    </div>
+
+    <!-- Task List -->
+    <div>
+      <h2 class="text-xl font-semibold">Tasks</h2>
+      <ul id="taskList" class="space-y-2"></ul>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = '/api/tasks';
+
+    // Fetch and display all tasks
+    async function fetchTasks() {
+      const response = await fetch(API_URL);
+      const tasks = await response.json();
+      const taskList = document.getElementById('taskList');
+      taskList.innerHTML = '';
+      tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.className = 'flex justify-between items-center p-2 bg-white rounded shadow';
+        li.innerHTML = `
+          <div>
+            <strong>${task.title}</strong>: ${task.description || 'No description'}
+          </div>
+          <div>
+            <button onclick="editTask(${task.id}, '${task.title}', '${task.description || ''}')" class="bg-yellow-500 text-white p-1 rounded mr-2">Edit</button>
+            <button onclick="deleteTask(${task.id})" class="bg-red-500 text-white p-1 rounded">Delete</button>
+          </div>
+        `;
+        taskList.appendChild(li);
+      });
+    }
+
+    // Save or update task
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+      const title = document.getElementById('title').value;
+      const description = document.getElementById('description').value;
+      const taskId = document.getElementById('taskId').value;
+
+      if (!title) {
+        alert('Title is required');
+        return;
+      }
+
+      const method = taskId ? 'PUT' : 'POST';
+      const url = taskId ? `${API_URL}/${taskId}` : API_URL;
+      await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, description })
+      });
+      resetForm();
+      fetchTasks();
+    });
+
+    // Edit task
+    function editTask(id, title, description) {
+      document.getElementById('taskId').value = id;
+      document.getElementById('title').value = title;
+      document.getElementById('description').value = description;
+      document.getElementById('saveBtn').textContent = 'Update';
+    }
+
+    // Delete task
+    async function deleteTask(id) {
+      await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      fetchTasks();
+    }
+
+    // Reset form
+    function resetForm() {
+      document.getElementById('taskId').value = '';
+      document.getElementById('title').value = '';
+      document.getElementById('description').value = '';
+      document.getElementById('saveBtn').textContent = 'Save';
+    }
+
+    // Initial fetch
+    fetchTasks();
+  </script>
+</body>
+</html>
