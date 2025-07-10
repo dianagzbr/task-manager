@@ -15,7 +15,7 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Create tasks table if it doesn't exist
+// Create table if it doesn't exist
 async function initDb() {
   try {
     await pool.query(`
