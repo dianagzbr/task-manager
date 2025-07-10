@@ -6,99 +6,168 @@
   <title>Task Manager</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-100">
-  <div class="container mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-4">Task Manager</h1>
-    
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="container mx-auto p-4 max-w-4xl">
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Task Manager</h1>
+
     <!-- Add/Edit Task Form -->
-    <div class="mb-4">
-      <h2 class="text-xl font-semibold">Add/Edit Task</h2>
-      <div class="flex space-x-2">
-        <input id="title" type="text" class="border p-2 rounded flex-1" placeholder="Task title" required>
-        <input id="description" type="text" class="border p-2 rounded flex-1" placeholder="Description">
-        <button id="saveBtn" class="bg-blue-500 text-white p-2 rounded">Save</button>
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h2 class="text-xl font-semibold text-gray-700 mb-4">Add or Edit Task</h2>
+      <div class="space-y-4">
+        <div>
+          <label for="title" class="block text-sm font-medium text-gray-600">Title</label>
+          <input id="title" type="text" class="w-full border p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter task title" required>
+          <p id="titleError" class="text-red-500 text-sm hidden">Title is required</p>
+        </div>
+        <div>
+          <label for="description" class="block text-sm font-medium text-gray-600">Description</label>
+          <textarea id="description" class="w-full border p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter description (optional)"></textarea>
+        </div>
+        <button id="saveBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition disabled:bg-gray-400" disabled>Save</button>
       </div>
-      <input type="hidden" id="taskId">
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notification" class="fixed top-4 right-4 bg-green-500 text-white p-4 rounded-md shadow-lg hidden">
+      <span id="notificationMessage"></span>
     </div>
 
     <!-- Task List -->
-    <div>
-      <h2 class="text-xl font-semibold">Tasks</h2>
-      <ul id="taskList" class="space-y-2"></ul>
+    <div class="bg-white p-6 rounded-lg shadow-md">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold text-gray-700">Tasks</h2>
+        <span id="taskCount" class="text-sm text-gray-500"></span>
+      </div>
+      <ul id="taskList" class="space-y-3"></ul>
+      <p id="noTasks" class="text-gray-500 text-center hidden">No tasks available</p>
     </div>
   </div>
 
   <script>
     const API_URL = '/api/tasks';
+    const saveBtn = document.getElementById('saveBtn');
+    const titleInput = document.getElementById('title');
+    const titleError = document.getElementById('titleError');
+    const notification = document.getElementById('notification');
+    const notificationMessage = document.getElementById('notificationMessage');
+    const taskList = document.getElementById('taskList');
+    const noTasks = document.getElementById('noTasks');
+    const taskCount = document.getElementById('taskCount');
+
+    // Enable/disable save button based on title input
+    titleInput.addEventListener('input', () => {
+      saveBtn.disabled = !titleInput.value.trim();
+      titleError.classList.add('hidden');
+    });
+
+    // Show notification
+    function showNotification(message, isError = false) {
+      notificationMessage.textContent = message;
+      notification.classList.remove('bg-green-500', 'bg-red-500');
+      notification.classList.add(isError ? 'bg-red-500' : 'bg-green-500');
+      notification.classList.remove('hidden');
+      setTimeout(() => notification.classList.add('hidden'), 3000);
+    }
 
     // Fetch and display all tasks
     async function fetchTasks() {
-      const response = await fetch(API_URL);
-      const tasks = await response.json();
-      const taskList = document.getElementById('taskList');
-      taskList.innerHTML = '';
-      tasks.forEach(task => {
-        const li = document.createElement('li');
-        li.className = 'flex justify-between items-center p-2 bg-white rounded shadow';
-        li.innerHTML = `
-          <div>
-            <strong>${task.title}</strong>: ${task.description || 'No description'}
-          </div>
-          <div>
-            <button onclick="editTask(${task.id}, '${task.title}', '${task.description || ''}')" class="bg-yellow-500 text-white p-1 rounded mr-2">Edit</button>
-            <button onclick="deleteTask(${task.id})" class="bg-red-500 text-white p-1 rounded">Delete</button>
-          </div>
-        `;
-        taskList.appendChild(li);
-      });
+      try {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Loading...';
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error('Failed to fetch tasks');
+        const tasks = await response.json();
+        taskList.innerHTML = '';
+        noTasks.classList.toggle('hidden', tasks.length > 0);
+        taskCount.textContent = `${tasks.length} task${tasks.length !== 1 ? 's' : ''}`;
+        tasks.forEach(task => {
+          const li = document.createElement('li');
+          li.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition';
+          li.innerHTML = `
+            <div class="flex-1">
+              <strong class="text-gray-800">${task.title}</strong>
+              <p class="text-gray-600 text-sm">${task.description || 'No description'}</p>
+            </div>
+            <div class="space-x-2">
+              <button onclick="editTask(${task.id}, '${task.title.replace(/'/g, "\\'")}', '${(task.description || '').replace(/'/g, "\\'")}')" class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition">Edit</button>
+              <button onclick="deleteTask(${task.id})" class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition">Delete</button>
+            </div>
+          `;
+          taskList.appendChild(li);
+        });
+      } catch (err) {
+        showNotification('Error loading tasks', true);
+      } finally {
+        saveBtn.disabled = !titleInput.value.trim();
+        saveBtn.textContent = titleInput.value.trim() && document.getElementById('taskId').value ? 'Update' : 'Save';
+      }
     }
 
     // Save or update task
-    document.getElementById('saveBtn').addEventListener('click', async () => {
-      const title = document.getElementById('title').value;
-      const description = document.getElementById('description').value;
+    saveBtn.addEventListener('click', async () => {
+      const title = titleInput.value.trim();
+      const description = document.getElementById('description').value.trim();
       const taskId = document.getElementById('taskId').value;
 
       if (!title) {
-        alert('Title is required');
+        titleError.classList.remove('hidden');
         return;
       }
 
-      const method = taskId ? 'PUT' : 'POST';
-      const url = taskId ? `${API_URL}/${taskId}` : API_URL;
-      await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description })
-      });
-      resetForm();
-      fetchTasks();
+      try {
+        saveBtn.disabled = true;
+        saveBtn.textContent = taskId ? 'Updating...' : 'Saving...';
+        const method = taskId ? 'PUT' : 'POST';
+        const url = taskId ? `${API_URL}/${taskId}` : API_URL;
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description })
+        });
+        if (!response.ok) throw new Error(taskId ? 'Failed to update task' : 'Failed to add task');
+        resetForm();
+        fetchTasks();
+        showNotification(taskId ? 'Task updated successfully!' : 'Task added successfully!');
+      } catch (err) {
+        showNotification(err.message, true);
+      }
     });
 
     // Edit task
     function editTask(id, title, description) {
       document.getElementById('taskId').value = id;
-      document.getElementById('title').value = title;
+      titleInput.value = title;
       document.getElementById('description').value = description;
-      document.getElementById('saveBtn').textContent = 'Update';
+      saveBtn.textContent = 'Update';
+      saveBtn.disabled = false;
+      titleInput.focus();
     }
 
     // Delete task
     async function deleteTask(id) {
-      await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-      fetchTasks();
+      try {
+        const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete task');
+        fetchTasks();
+        showNotification('Task deleted successfully!');
+      } catch (err) {
+        showNotification(err.message, true);
+      }
     }
 
     // Reset form
     function resetForm() {
       document.getElementById('taskId').value = '';
-      document.getElementById('title').value = '';
+      titleInput.value = '';
       document.getElementById('description').value = '';
-      document.getElementById('saveBtn').textContent = 'Save';
+      saveBtn.textContent = 'Save';
+      saveBtn.disabled = true;
+      titleError.classList.add('hidden');
     }
 
     // Initial fetch
     fetchTasks();
   </script>
+  <input type="hidden" id="taskId">
 </body>
 </html>
