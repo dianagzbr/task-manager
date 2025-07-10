@@ -41,6 +41,21 @@
       <ul id="taskList" class="space-y-3"></ul>
       <p id="noTasks" class="text-gray-500 text-center hidden">No hay tareas disponibles</p>
     </div>
+
+    <!-- Modal for Viewing Individual Task -->
+    <div id="taskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+      <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">Detalles de la Tarea</h2>
+        <div class="space-y-4">
+          <p><strong>ID:</strong> <span id="modalTaskId"></span></p>
+          <p><strong>Título:</strong> <span id="modalTaskTitle"></span></p>
+          <p><strong>Descripción:</strong> <span id="modalTaskDescription"></span></p>
+        </div>
+        <div class="mt-6 text-right">
+          <button id="closeModalBtn" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">Cerrar</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -53,6 +68,11 @@
     const taskList = document.getElementById('taskList');
     const noTasks = document.getElementById('noTasks');
     const taskCount = document.getElementById('taskCount');
+    const taskModal = document.getElementById('taskModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const modalTaskId = document.getElementById('modalTaskId');
+    const modalTaskTitle = document.getElementById('modalTaskTitle');
+    const modalTaskDescription = document.getElementById('modalTaskDescription');
 
     // Enable/disable save button based on title input
     titleInput.addEventListener('input', () => {
@@ -86,9 +106,10 @@
           li.innerHTML = `
             <div class="flex-1">
               <strong class="text-gray-800">${task.title}</strong>
-              <p class="text-gray-600 text-sm">${task.description || 'No description'}</p>
+              <p class="text-gray-600 text-sm">${task.description || 'Sin descripción'}</p>
             </div>
             <div class="space-x-2">
+              <button onclick="viewTask(${task.id})" class="bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-600 transition">Ver</button>
               <button onclick="editTask(${task.id}, '${task.title.replace(/'/g, "\\'")}', '${(task.description || '').replace(/'/g, "\\'")}')" class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition">Editar</button>
               <button onclick="deleteTask(${task.id})" class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition">Eliminar</button>
             </div>
@@ -102,6 +123,26 @@
         saveBtn.textContent = titleInput.value.trim() && document.getElementById('taskId').value ? 'Actualizar' : 'Guardar';
       }
     }
+
+    // View individual task
+    async function viewTask(id) {
+      try {
+        const response = await fetch(`${API_URL}/${id}`);
+        if (!response.ok) throw new Error('Error al cargar la tarea');
+        const task = await response.json();
+        modalTaskId.textContent = task.id;
+        modalTaskTitle.textContent = task.title;
+        modalTaskDescription.textContent = task.description || 'Sin descripción';
+        taskModal.classList.remove('hidden');
+      } catch (err) {
+        showNotification(err.message, true);
+      }
+    }
+
+    // Close modal
+    closeModalBtn.addEventListener('click', () => {
+      taskModal.classList.add('hidden');
+    });
 
     // Save or update task
     saveBtn.addEventListener('click', async () => {
